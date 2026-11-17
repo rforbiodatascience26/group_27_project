@@ -3,13 +3,20 @@ title: "01_load"
 format: html
 ---
 
+### Load libraries
+
+```{r}
+#| message: false
+library("tidyverse")
+```
+
 ### Load data
 
 ```{r}
 raw_data_path <- "../_raw/"
 data_path <- "../data/"
 
-# Create folders automatically if they don't exist yet
+# Create _raw and data folders automatically if they don't exist yet
 if (!dir.exists(raw_data_path)) {
   dir.create(raw_data_path)
 }
