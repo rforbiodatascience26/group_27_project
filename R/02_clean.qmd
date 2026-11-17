@@ -3,3 +3,26 @@ title: "02_clean"
 format: html
 ---
 
+```{r}
+#| message: False
+library("tidyverse")
+```
+
+
+```{r}
+#removes duplicate row
+META <- META |>
+  select(-SampleID)
+#adds ASV and TAX to the the META data to create one data set
+long_ASV <- ASV |>
+  pivot_longer(- ID,
+               names_to = "Sample_ID",
+               values_to = "ASV")
+META_new <- long_ASV |>
+  left_join(META, by = "Sample_ID")
+
+ALL <- META_new |>
+  left_join(TAX, by = "ID", relationship = "many-to-one")
+```
+
+
