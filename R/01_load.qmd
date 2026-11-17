@@ -3,3 +3,31 @@ title: "01_load"
 format: html
 ---
 
+### Load data
+
+```{r}
+base_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/"
+raw_data_path <- "../_raw/"
+data_path <- "../data/"
+
+# ASV table
+ASV <- read_tsv(file = str_c(base_url, "GSE311689_ASV_table.tsv.gz"), show_col_types = FALSE)
+write_tsv(x = ASV,
+          file = str_c(raw_data_path, "GSE311689_ASV_table.tsv"))
+write_tsv(x = ASV,
+          file = str_c(data_path, "01_dat_load_asv.tsv"))
+
+# Sample metadata
+META <- read_tsv(file = str_c(base_url, "GSE311689_sample_metadata.tsv.gz"), show_col_types = FALSE)
+write_tsv(x = META,
+          file = str_c(raw_data_path, "GSE311689_sample_metadata.tsv"))
+write_tsv(x = META,
+          file = str_c(data_path, "01_dat_load_meta.tsv"))
+
+# Taxonomy table
+TAX <- read_tsv(file = str_c(base_url, "GSE311689_taxonomy_table.tsv.gz"), show_col_types = FALSE)
+write_tsv(x = TAX,
+          file = str_c(raw_data_path, "GSE311689_taxonomy_table.tsv"))
+write_tsv(x = TAX,
+          file = str_c(data_path, "01_dat_load_tax.tsv"))
+```
