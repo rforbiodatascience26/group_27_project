@@ -6,9 +6,18 @@ format: html
 ### Load data
 
 ```{r}
-base_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/"
 raw_data_path <- "../_raw/"
 data_path <- "../data/"
+
+# Create folders automatically if they don't exist yet
+if (!dir.exists(raw_data_path)) {
+  dir.create(raw_data_path)
+}
+if (!dir.exists(data_path)) {
+  dir.create(data_path)
+}
+
+base_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/"
 
 # ASV table
 ASV <- read_tsv(file = str_c(base_url, "GSE311689_ASV_table.tsv.gz"), show_col_types = FALSE)
