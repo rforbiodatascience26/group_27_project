@@ -3,3 +3,42 @@ title: "04_describe"
 format: html
 ---
 
+## Load libraries
+
+```{r}
+#| message: false
+library("table1")
+```
+
+## Data Description
+
+The taxamony, meta, as well as the ASV dataset were sourced from the GEO series GSE311689, a study by the Biological Networks Laboratory at the University of San Sebastian. The study, titled "SARS-CoV-2 Variant-Dependent Alterations in Nasopharyngeal Microbiota and Host Inflammatory Response" and published on the 30th of January 2026, aimed to characterize variant-associatiod changes in nasopharyngeal microbial communities during SARS-CoV-2 infection. For this study 300 nasopharyngeal swabs were collected in Chile between April 2021 and August 2021 for SARS-CoV-2 diagnosis and variant identification. The samples were tested by RT-qPCR and variants (Gamma, Lambda, Delta) were determined using Hydrolusys Probe-based assays. Bacterial community profiling was performed by sequencing the V3-V4 region of the 16S rRNA gene using Illumina MiSeq technology. Amplicon sequence variants (ASV) were identified by processing raw sequencing reads using the DADA2 pipeline.
+
+## Cohort Definition
+
+The study cohort comprises 300 nasopharyngeal swab samples stratified into SARS-CoV-2-negative controls ($n = 71$, 23.7%) and three SARS-CoV-2 variant groups: Gamma ($n = 88$, 29.3%), Lambda ($n = 78$, 26.0%), and Delta ($n = 63$, 21.0%). Overall, gender is evenly distributed with 145 females (48.3%) and 155 males (51.7%), though sex proportions vary across groups—ranging from 38.6% female in Gamma to 60.3% female in Delta. Patient age spans from 0 to 100 years, with a cohort-wide median of 40.0 years (mean 43.1 $\pm$ 24.5 years) and comparable median ages across all four groups (37.0 to 41.5 years). Geographically, samples originate from 14 municipalities (*comunas*) within the Santiago Metropolitan Region, with the majority collected in San Bernardo ($n = 96$, 32.0%), La Florida ($n = 84$, 28.0%), El Bosque ($n = 53$, 17.7%), and Pedro Aguirre Cerda ($n = 32$, 10.7%).
+
+```{r}
+meta_clean |>
+  mutate(Gender = factor(sex),
+         Cohort = factor(variant)) |>
+  table1(x = formula(~ sex + age + city|variant),
+         data = _)
+```
+
+## Confounding variables
+
+Nasopharyngeal swabs were collected in Chile between April and August 2021. Temporal distribution was uneven across groups, with no SARS-CoV-2-negative control samples collected during April and May, indicating potential confounding by sampling time. Because our goal is to characterize SARS-CoV-2 variant-dependent changes in the nasopharyngeal microbiota, the absence of SARS-CoV-2-negative controls during April and May prevents a direct baseline comparison of how the infected microbiota shifted relative to an uninfected state during those months. By removing the months April and May the confounder can be avoided,
+
+```{r}
+meta_aug |>
+  count(month, variant) |>
+  pivot_wider(names_from = variant, values_from = n, values_fill = 0)
+
+```
+
+## Sequencing quality and depth
+
+```{r}
+qc_reads
+```
