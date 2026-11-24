@@ -26,9 +26,8 @@ raw_dir <- "../data/_raw/"
 # Paste the exact links from the GEO page here
 geo_links <- c(
   asv  = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5FASV%5Ftable%2Etsv%2Egz",
-  tax  = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5Fsample%5Fmetadata%2Etsv%2Egz",
-  meta = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5Ftaxonomy%5Ftable%2Etsv%2Egz"
-)
+  tax  ="https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5Ftaxonomy%5Ftable%2Etsv%2Egz" ,
+  meta = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5Fsample%5Fmetadata%2Etsv%2Egz")
 
 raw_files <- c(
   asv  = "GSE311689_ASV_table.tsv",
