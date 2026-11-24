@@ -3,7 +3,6 @@ title: "03_augment"
 format: html
 ---
 
-
 ## Load libraries
 
 ```{r}
@@ -12,21 +11,11 @@ library("tidyverse")
 source("99_proj_func.R")
 ```
 
-## Load data
-
-```{r}
-meta_clean <- read_tsv(file = "../data/02_dat_clean_meta.tsv")
-tax_clean <- read_tsv(file = "../data/02_dat_clean_tax.tsv")
-asv_clean <- read_tsv(file = "../data/02_dat_clean_asv.tsv")
-```
-
 # 1. Sample metadata
 
 ## 1.1 Exclude the inconsistent sample
 
-Sample `TN_100_011` is labelled `Result = Negative` but `Variant = Delta`
-(flagged in `02_clean`). We cannot tell which label is wrong, so the sample
-is excluded from all analyses.
+Sample `TN_100_011` is labelled `Result = Negative` but `Variant = Delta` (flagged in `02_clean`). We cannot tell which label is wrong, so the sample is excluded from all analyses.
 
 ```{r}
 meta_aug <- meta_clean |>
@@ -34,9 +23,7 @@ meta_aug <- meta_clean |>
   select(-qc_label_mismatch)
 ```
 
-The 22 samples with duplicated cytokine profiles (`qc_cytokine_duplicated`)
-are **kept**: their microbiota data are valid. The flag stays in the data so
-the cytokine analyses can be run with and without them.
+The 22 samples with duplicated cytokine profiles (`qc_cytokine_duplicated`) are **kept**: their microbiota data are valid. The flag stays in the data so the cytokine analyses can be run with and without them.
 
 ## 1.2 Restore factor levels
 
@@ -52,9 +39,7 @@ meta_aug <- meta_aug |>
 
 ## 1.3 New variables: month and age group
 
-`Month` and `Range_Age` were removed in `02_clean` because they can be derived
-from `date` and `age`. They are recomputed here with the same age bins as the
-original data.
+`Month` and `Range_Age` were removed in `02_clean` because they can be derived from `date` and `age`. They are recomputed here with the same age bins as the original data.
 
 ```{r}
 meta_aug <- meta_aug |>
@@ -72,8 +57,7 @@ meta_aug |>
 
 ## 1.4 New variables: log-transformed cytokines
 
-Cytokine values are relative expression (2^-ΔΔCt). They span several orders of
-magnitude, so they are analysed on a log10 scale.
+Cytokine values are relative expression (2\^-ΔΔCt). They span several orders of magnitude, so they are analysed on a log10 scale.
 
 ```{r}
 meta_aug |>
@@ -102,13 +86,11 @@ asv_tax <- asv_clean |>
 
 The 16S data contain reads that are not bacterial:
 
-* *Eukaryota* (almost certainly human host DNA) and ASVs with no kingdom
-* Chloroplasts (plant DNA, classified under Cyanobacteria)
-* Mitochondria (classified under Rickettsiales)
+-   *Eukaryota* (almost certainly human host DNA) and ASVs with no kingdom
+-   Chloroplasts (plant DNA, classified under Cyanobacteria)
+-   Mitochondria (classified under Rickettsiales)
 
-These are not part of the nasopharyngeal bacterial community, so they are
-removed before computing abundances. `%in%` is used instead of `==` because
-it treats `NA` as "not a match" instead of returning `NA`.
+These are not part of the nasopharyngeal bacterial community, so they are removed before computing abundances. `%in%` is used instead of `==` because it treats `NA` as "not a match" instead of returning `NA`.
 
 ```{r}
 asv_tax |>
@@ -123,8 +105,7 @@ asv_tax |>
   mutate(pct_reads = 100 * reads / sum(reads))
 ```
 
-Before filtering, we keep the share of non-bacterial reads per sample as a
-quality-control variable for `04_describe`.
+Before filtering, we keep the share of non-bacterial reads per sample as a quality-control variable for `04_describe`.
 
 ```{r}
 qc_reads <- asv_tax |>
@@ -144,8 +125,7 @@ asv_bac <- asv_tax |>
 
 ## 2.2 Remove samples with low sequencing depth
 
-Samples with very few bacterial reads give unreliable relative abundances and
-diversity estimates. Samples with fewer than 1000 bacterial reads are removed.
+Samples with very few bacterial reads give unreliable relative abundances and diversity estimates. Samples with fewer than 1000 bacterial reads are removed.
 
 ```{r}
 min_reads <- 1000
@@ -164,9 +144,7 @@ asv_bac <- asv_bac |>
 
 ## 2.3 Label unclassified genera
 
-ASVs without a genus are labelled with their lowest known rank
-(e.g. "Unclassified Enterobacteriaceae") instead of `NA`, so they are not
-grouped together across unrelated families.
+ASVs without a genus are labelled with their lowest known rank (e.g. "Unclassified Enterobacteriaceae") instead of `NA`, so they are not grouped together across unrelated families.
 
 ```{r}
 asv_bac <- asv_bac |>
@@ -178,8 +156,7 @@ asv_bac <- asv_bac |>
 
 ## 2.4 New variable: relative abundance
 
-Sequencing depth differs between samples, so raw counts are not comparable.
-Each ASV count is divided by the total bacterial reads of its sample.
+Sequencing depth differs between samples, so raw counts are not comparable. Each ASV count is divided by the total bacterial reads of its sample.
 
 ```{r}
 asv_bac <- asv_bac |>
@@ -196,19 +173,13 @@ asv_bac |>
 
 # 3. Alpha diversity
 
-Computed per sample from the bacterial ASV counts, with the functions defined
-in `99_proj_func.R`:
+Computed per sample from the bacterial ASV counts, with the functions defined in `99_proj_func.R`:
 
-* **Observed** (`calc_observed()`): number of ASVs detected
-* **Chao1** (`calc_chao1()`): estimated richness, corrected for unseen ASVs
-  using singletons (F1) and doubletons (F2):
-  Chao1 = S_obs + F1(F1 - 1) / (2(F2 + 1))
-* **Shannon** (`calc_shannon()`): H' = -Σ p·ln(p), combines richness and
-  evenness
-* **Simpson** (`calc_simpson()`): 1 - Σ p², probability that two random reads
-  are different ASVs
-* **Pielou evenness** (`calc_pielou()`): H' / ln(S_obs), from 0 (one ASV
-  dominates) to 1 (all ASVs equally abundant)
+-   **Observed** (`calc_observed()`): number of ASVs detected
+-   **Chao1** (`calc_chao1()`): estimated richness, corrected for unseen ASVs using singletons (F1) and doubletons (F2): Chao1 = S_obs + F1(F1 - 1) / (2(F2 + 1))
+-   **Shannon** (`calc_shannon()`): H' = -Σ p·ln(p), combines richness and evenness
+-   **Simpson** (`calc_simpson()`): 1 - Σ p², probability that two random reads are different ASVs
+-   **Pielou evenness** (`calc_pielou()`): H' / ln(S_obs), from 0 (one ASV dominates) to 1 (all ASVs equally abundant)
 
 ```{r}
 alpha_div <- asv_bac |>
@@ -225,8 +196,7 @@ alpha_div |>
 
 # 4. Join everything into one dataset
 
-The final dataset has one row per sample and ASV, with the taxonomy, the
-sample metadata, the read QC and the alpha diversity of the sample.
+The final dataset has one row per sample and ASV, with the taxonomy, the sample metadata, the read QC and the alpha diversity of the sample.
 
 ```{r}
 dat_aug <- asv_bac |>
