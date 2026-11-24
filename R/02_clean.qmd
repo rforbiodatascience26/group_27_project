@@ -3,26 +3,245 @@ title: "02_clean"
 format: html
 ---
 
+
+
+
+## Load libraries
+
 ```{r}
-#| message: False
+#| message: false
 library("tidyverse")
 ```
 
+## Load data
 
 ```{r}
-#removes duplicate row
-META <- META |>
-  select(-SampleID)
-#adds ASV and TAX to the the META data to create one data set
-long_ASV <- ASV |>
-  pivot_longer(- ID,
-               names_to = "Sample_ID",
-               values_to = "ASV")
-META_new <- long_ASV |>
-  left_join(META, by = "Sample_ID")
+asv_raw <- read_tsv(file = "../data/01_dat_load_asv.tsv")
+tax_raw <- read_tsv(file = "../data/01_dat_load_tax.tsv",
+                    col_types = cols(.default = col_character()))
+meta_raw <- read_tsv(file = "../data/01_dat_load_meta.tsv",
+                     col_types = cols(.default = col_character()))
+```
 
-ALL <- META_new |>
-  left_join(TAX, by = "ID", relationship = "many-to-one")
+# 1. Sample meta
+
+## 1.1 Inspect
+
+```{r}
+meta_raw
 ```
 
 
+```{r}
+meta_raw |>
+  glimpse()
+```
+
+## 1.2 Remove redundant columns
+
+`Sample_ID` is an exact copy of `SampleID`, so we check that before dropping
+it. `Sample` is the trailing number of the ID. `Month` and `Range_Age` can be
+derived from `Date` and `Age`, so we recompute them in `03_augment.qmd`
+instead of trusting the typed-in versions.
+
+```{r}
+meta_raw |>
+  summarise(sample_id_identical = all(SampleID == Sample_ID))
+
+meta_clean <- meta_raw |>
+  select(-Sample_ID, -Sample, -Month, -Range_Age)
+```
+
+## 1.3 Rename columns to snake_case
+
+The cytokine column names contain dots and Greek letters (`IFN.γ_normalized`),
+which are awkward to type, so we give them short names.
+
+```{r}
+meta_clean <- meta_clean |>
+  rename(sample_id = SampleID,
+         il2 = starts_with("IL.2"),
+         ifn_g = starts_with("IFN"),
+         tnf_a = starts_with("TNF"),
+         il1ra = starts_with("IL.1Ra")) |>
+  rename_with(.fn = str_to_lower)
+```
+
+## 1.4 Fix column types
+
+```{r}
+meta_clean <- meta_clean |>
+  mutate(date = dmy(date),
+         age = as.integer(age),
+         across(.cols = c(il2, ifn_g, tnf_a, il1ra),
+                .fns = as.numeric))
+```
+
+## 1.5 Fix broken text encoding
+
+Some municipality names lost their accents (`√É¬ëu√É¬±oa` should be Ñuñoa), and
+one internal code contains invisible characters (`VND 619`).
+
+```{r}
+meta_clean |>
+  filter(str_detect(city, "[^[:alpha:] ]")) |>
+  distinct(city)
+
+meta_clean <- meta_clean |>
+  mutate(city = case_when(str_detect(city, "^San Ram") ~ "San Ramón",
+                          str_detect(city, "^Maip") ~ "Maipú",
+                          str_detect(city, "oa$") &
+                            str_detect(city, "[^[:alpha:] ]") ~ "Ñuñoa",
+                          .default = city),
+         internal_code = str_remove_all(internal_code, "[^A-Z0-9_]"))
+```
+
+## 1.6 Categorical variables as factors
+
+```{r}
+meta_clean <- meta_clean |>
+  mutate(sex = factor(sex),
+         result = factor(result, levels = c("Negative", "Positive")),
+         variant = factor(variant,
+                          levels = c("Negative", "Gamma", "Lambda", "Delta")))
+```
+
+## 1.7 Quality checks
+
+**Inconsistent sample:** `Result` and `Variant` should agree. One sample is
+`Negative` but labelled `Delta`. We flag it and exclude it from the analyses,
+because we cannot tell which of the two labels is wrong.
+
+```{r}
+meta_clean |>
+  count(result, variant)
+
+meta_clean <- meta_clean |>
+  mutate(qc_label_mismatch = (result == "Negative") != (variant == "Negative"))
+
+meta_clean |>
+  filter(qc_label_mismatch)
+```
+
+**Duplicated cytokine profiles:** different samples should not have exactly
+the same four cytokine values. Their microbiota profiles differ, so these are
+not duplicated samples. This looks like a copy-paste error in the cytokine
+sheet, so we flag these samples.
+
+```{r}
+meta_clean <- meta_clean |>
+  group_by(il2, ifn_g, tnf_a, il1ra) |>
+  mutate(qc_cytokine_duplicated = n() > 1) |>
+  ungroup()
+
+meta_clean |>
+  filter(qc_cytokine_duplicated) |>
+  arrange(tnf_a) |>
+  select(sample_id, variant, date, il2, ifn_g, tnf_a, il1ra)
+```
+
+**Missing values:**
+
+```{r}
+meta_clean |>
+  summarise(across(.cols = everything(), .fns = ~ sum(is.na(.x)))) |>
+  pivot_longer(cols = everything(), names_to = "column", values_to = "n_na") |>
+  filter(n_na > 0)
+```
+
+# 2. Taxonomy table
+
+## 2.1 Inspect
+
+```{r}
+tax_raw
+```
+
+
+```{r}
+tax_raw |>
+  glimpse()
+```
+
+## 2.2 Swap the mislabelled columns
+
+The column named `Order` contains classes (e.g. Gammaproteobacteria) and
+`Class` contains orders (e.g. Pseudomonadales), so the two headers are swapped.
+
+```{r}
+tax_raw |>
+  distinct(Order, Class) |>
+  head()
+
+tax_clean <- tax_raw |>
+  rename(class = Order,
+         order = Class) |>
+  rename_with(.fn = str_to_lower)
+```
+
+## 2.3 Clean identifiers and names
+
+* The ASV IDs contain a space (`seq 001`), which is replaced by `_`.
+* SILVA adds numeric suffixes to some genera (`Corynebacterium_1`,
+  `Prevotella_7`), which are removed so that all ASVs of a genus group together.
+* The species column repeats the genus (`Prevotella_7 melaninogenica`), so
+  only the species epithet is kept.
+
+```{r}
+tax_clean <- tax_clean |>
+  mutate(asv_id = str_replace(id, " ", "_"),
+         genus = str_remove(genus, "_\\d+$"),
+         species = str_remove(species, "^\\S+\\s")) |>
+  select(asv_id, kingdom:species)
+
+tax_clean |>
+  count(kingdom)
+```
+
+# 3. ASV count table
+
+## 3.1 Inspect
+
+```{r}
+asv_raw
+```
+
+
+The table is wide: one row per ASV and one column per sample.
+
+```{r}
+dim(asv_raw)
+asv_raw[1:5, 1:5]
+```
+
+## 3.2 Pivot to long format
+
+```{r}
+asv_clean <- asv_raw |>
+  pivot_longer(cols = -ID,
+               names_to = "sample_id",
+               values_to = "reads") |>
+  mutate(asv_id = str_replace(ID, " ", "_"),
+         reads = as.integer(reads)) |>
+  select(sample_id, asv_id, reads)
+
+asv_clean
+```
+
+## 3.3 Check that the three tables match
+
+```{r}
+# Every ASV in the counts has a taxonomy, and vice versa
+setequal(asv_clean$asv_id, tax_clean$asv_id)
+
+# Every sample in the counts has metadata, and vice versa
+setequal(asv_clean$sample_id, meta_clean$sample_id)
+```
+
+# 4. Write clean data
+
+```{r}
+write_tsv(x = meta_clean, file = "../data/02_dat_clean_meta.tsv")
+write_tsv(x = tax_clean, file = "../data/02_dat_clean_tax.tsv")
+write_tsv(x = asv_clean, file = "../data/02_dat_clean_asv.tsv")
+```

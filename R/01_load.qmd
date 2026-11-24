@@ -3,47 +3,72 @@ title: "01_load"
 format: html
 ---
 
-### Load libraries
+## Load libraries
 
 ```{r}
 #| message: false
 library("tidyverse")
 ```
 
-### Load data
+## Download raw data from GEO (only if not already present)
+
+The three supplementary tables of GEO series GSE311689 are downloaded into
+`data/_raw/`. The `data/` folder is listed in `.gitignore`, so the data never
+go to GitHub.
+
+The download links are copied from the "(http)" link next to each file under
+"Supplementary file" on the GEO page (right click → copy link address).
+The local file names are the names GEO gives the files.
 
 ```{r}
-raw_data_path <- "../_raw/"
-data_path <- "../data/"
+raw_dir <- "../data/_raw/"
 
-# Create _raw and data folders automatically if they don't exist yet
-if (!dir.exists(raw_data_path)) {
-  dir.create(raw_data_path)
+# Paste the exact links from the GEO page here
+geo_links <- c(
+  asv  = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5FASV%5Ftable%2Etsv%2Egz",
+  tax  ="https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5Ftaxonomy%5Ftable%2Etsv%2Egz" ,
+  meta = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/GSE311689%5Fsample%5Fmetadata%2Etsv%2Egz")
+
+raw_files <- c(
+  asv  = "GSE311689_ASV_table.tsv",
+  tax  = "GSE311689_taxonomy_table.tsv",
+  meta = "GSE311689_sample_metadata.tsv"
+)
+
+if (!dir.exists(raw_dir)) {
+  dir.create(path = raw_dir, recursive = TRUE)
 }
-if (!dir.exists(data_path)) {
-  dir.create(data_path)
+
+for (table_name in names(raw_files)) {
+  destination <- str_c(raw_dir, raw_files[table_name])
+  if (!file.exists(destination)) {
+    download.file(url = geo_links[table_name],
+                  destfile = destination,
+                  mode = "wb")
+  }
 }
+```
 
-base_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/"
+## Read raw data
 
-# ASV table
-ASV <- read_tsv(file = str_c(base_url, "GSE311689_ASV_table.tsv.gz"), show_col_types = FALSE)
-write_tsv(x = ASV,
-          file = str_c(raw_data_path, "GSE311689_ASV_table.tsv"))
-write_tsv(x = ASV,
-          file = str_c(data_path, "01_dat_load_asv.tsv"))
+All columns are read as character first, so nothing is silently converted.
+Types are fixed explicitly in `02_clean.qmd`. The exception is the ASV count
+table, which only holds integer counts.
 
-# Sample metadata
-META <- read_tsv(file = str_c(base_url, "GSE311689_sample_metadata.tsv.gz"), show_col_types = FALSE)
-write_tsv(x = META,
-          file = str_c(raw_data_path, "GSE311689_sample_metadata.tsv"))
-write_tsv(x = META,
-          file = str_c(data_path, "01_dat_load_meta.tsv"))
+```{r}
+asv_raw <- read_tsv(file = str_c(raw_dir, raw_files["asv"]))
 
-# Taxonomy table
-TAX <- read_tsv(file = str_c(base_url, "GSE311689_taxonomy_table.tsv.gz"), show_col_types = FALSE)
-write_tsv(x = TAX,
-          file = str_c(raw_data_path, "GSE311689_taxonomy_table.tsv"))
-write_tsv(x = TAX,
-          file = str_c(data_path, "01_dat_load_tax.tsv"))
+tax_raw <- read_tsv(file = str_c(raw_dir, raw_files["tax"]),
+                    col_types = cols(.default = col_character()))
+
+meta_raw <- read_tsv(file = str_c(raw_dir, raw_files["meta"]),
+                     col_types = cols(.default = col_character()))
+```
+
+## Write data
+
+```{r}
+write_tsv(x = asv_raw, file = "../data/01_dat_load_asv.tsv")
+write_tsv(x = tax_raw, file = "../data/01_dat_load_tax.tsv")
+write_tsv(x = meta_raw, file = "../data/01_dat_load_meta.tsv")
 ```
