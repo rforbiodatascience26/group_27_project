@@ -3,24 +3,11 @@ title: "02_clean"
 format: html
 ---
 
-
-
-
 ## Load libraries
 
 ```{r}
 #| message: false
 library("tidyverse")
-```
-
-## Load data
-
-```{r}
-asv_raw <- read_tsv(file = "../data/01_dat_load_asv.tsv")
-tax_raw <- read_tsv(file = "../data/01_dat_load_tax.tsv",
-                    col_types = cols(.default = col_character()))
-meta_raw <- read_tsv(file = "../data/01_dat_load_meta.tsv",
-                     col_types = cols(.default = col_character()))
 ```
 
 # 1. Sample meta
@@ -31,7 +18,6 @@ meta_raw <- read_tsv(file = "../data/01_dat_load_meta.tsv",
 meta_raw
 ```
 
-
 ```{r}
 meta_raw |>
   glimpse()
@@ -39,10 +25,7 @@ meta_raw |>
 
 ## 1.2 Remove redundant columns
 
-`Sample_ID` is an exact copy of `SampleID`, so we check that before dropping
-it. `Sample` is the trailing number of the ID. `Month` and `Range_Age` can be
-derived from `Date` and `Age`, so we recompute them in `03_augment.qmd`
-instead of trusting the typed-in versions.
+`Sample_ID` is an exact copy of `SampleID`, so we check that before dropping it. `Sample` is the trailing number of the ID. `Month` and `Range_Age` can be derived from `Date` and `Age`, so we recompute them in `03_augment.qmd` instead of trusting the typed-in versions.
 
 ```{r}
 meta_raw |>
@@ -54,8 +37,7 @@ meta_clean <- meta_raw |>
 
 ## 1.3 Rename columns to snake_case
 
-The cytokine column names contain dots and Greek letters (`IFN.γ_normalized`),
-which are awkward to type, so we give them short names.
+The cytokine column names contain dots and Greek letters (`IFN.γ_normalized`), which are awkward to type, so we give them short names.
 
 ```{r}
 meta_clean <- meta_clean |>
@@ -79,8 +61,7 @@ meta_clean <- meta_clean |>
 
 ## 1.5 Fix broken text encoding
 
-Some municipality names lost their accents (`√É¬ëu√É¬±oa` should be Ñuñoa), and
-one internal code contains invisible characters (`VND 619`).
+Some municipality names lost their accents (`√É¬ëu√É¬±oa` should be Ñuñoa), and one internal code contains invisible characters (`VND 619`).
 
 ```{r}
 meta_clean |>
@@ -108,9 +89,7 @@ meta_clean <- meta_clean |>
 
 ## 1.7 Quality checks
 
-**Inconsistent sample:** `Result` and `Variant` should agree. One sample is
-`Negative` but labelled `Delta`. We flag it and exclude it from the analyses,
-because we cannot tell which of the two labels is wrong.
+**Inconsistent sample:** `Result` and `Variant` should agree. One sample is `Negative` but labelled `Delta`. We flag it and exclude it from the analyses, because we cannot tell which of the two labels is wrong.
 
 ```{r}
 meta_clean |>
@@ -123,14 +102,11 @@ meta_clean |>
   filter(qc_label_mismatch)
 ```
 
-**Duplicated cytokine profiles:** different samples should not have exactly
-the same four cytokine values. Their microbiota profiles differ, so these are
-not duplicated samples. This looks like a copy-paste error in the cytokine
-sheet, so we flag these samples.
+**Duplicated cytokine profiles:** different samples should not have exactly the same four cytokine values. Their microbiota profiles differ, so these are not duplicated samples. This looks like a copy-paste error in the cytokine sheet, so we flag these samples.
 
 ```{r}
 meta_clean <- meta_clean |>
-  group_by(il2, ifn_g, tnf_a, il1ra) |>
+  group_by(il2, ifn_g, tnf_a, il1ra)  |>
   mutate(qc_cytokine_duplicated = n() > 1) |>
   ungroup()
 
@@ -157,7 +133,6 @@ meta_clean |>
 tax_raw
 ```
 
-
 ```{r}
 tax_raw |>
   glimpse()
@@ -165,8 +140,7 @@ tax_raw |>
 
 ## 2.2 Swap the mislabelled columns
 
-The column named `Order` contains classes (e.g. Gammaproteobacteria) and
-`Class` contains orders (e.g. Pseudomonadales), so the two headers are swapped.
+The column named `Order` contains classes (e.g. Gammaproteobacteria) and `Class` contains orders (e.g. Pseudomonadales), so the two headers are swapped.
 
 ```{r}
 tax_raw |>
@@ -181,11 +155,9 @@ tax_clean <- tax_raw |>
 
 ## 2.3 Clean identifiers and names
 
-* The ASV IDs contain a space (`seq 001`), which is replaced by `_`.
-* SILVA adds numeric suffixes to some genera (`Corynebacterium_1`,
-  `Prevotella_7`), which are removed so that all ASVs of a genus group together.
-* The species column repeats the genus (`Prevotella_7 melaninogenica`), so
-  only the species epithet is kept.
+-   The ASV IDs contain a space (`seq 001`), which is replaced by `_`.
+-   SILVA adds numeric suffixes to some genera (`Corynebacterium_1`, `Prevotella_7`), which are removed so that all ASVs of a genus group together.
+-   The species column repeats the genus (`Prevotella_7 melaninogenica`), so only the species epithet is kept.
 
 ```{r}
 tax_clean <- tax_clean |>
@@ -205,7 +177,6 @@ tax_clean |>
 ```{r}
 asv_raw
 ```
-
 
 The table is wide: one row per ASV and one column per sample.
 

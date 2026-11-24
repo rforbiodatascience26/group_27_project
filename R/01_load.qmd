@@ -28,23 +28,23 @@ if (!dir.exists(data_path)) {
 base_url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE311nnn/GSE311689/suppl/"
 
 # ASV table
-ASV <- read_tsv(file = str_c(base_url, "GSE311689_ASV_table.tsv.gz"), show_col_types = FALSE)
-write_tsv(x = ASV,
+asv_raw <- read_tsv(file = str_c(base_url, "GSE311689_ASV_table.tsv.gz"), show_col_types = FALSE)
+write_tsv(x = asv_raw,
           file = str_c(raw_data_path, "GSE311689_ASV_table.tsv"))
-write_tsv(x = ASV,
+write_tsv(x = asv_raw,
           file = str_c(data_path, "01_dat_load_asv.tsv"))
 
 # Sample metadata
-META <- read_tsv(file = str_c(base_url, "GSE311689_sample_metadata.tsv.gz"), show_col_types = FALSE)
-write_tsv(x = META,
+meta_raw <- read_tsv(file = str_c(base_url, "GSE311689_sample_metadata.tsv.gz"), show_col_types = FALSE)
+write_tsv(x = meta_raw,
           file = str_c(raw_data_path, "GSE311689_sample_metadata.tsv"))
-write_tsv(x = META,
+write_tsv(x = meta_raw,
           file = str_c(data_path, "01_dat_load_meta.tsv"))
 
 # Taxonomy table
-TAX <- read_tsv(file = str_c(base_url, "GSE311689_taxonomy_table.tsv.gz"), show_col_types = FALSE)
-write_tsv(x = TAX,
+tax_raw <- read_tsv(file = str_c(base_url, "GSE311689_taxonomy_table.tsv.gz"), show_col_types = FALSE)
+write_tsv(x = tax_raw,
           file = str_c(raw_data_path, "GSE311689_taxonomy_table.tsv"))
-write_tsv(x = TAX,
+write_tsv(x = tax_raw,
           file = str_c(data_path, "01_dat_load_tax.tsv"))
 ```
