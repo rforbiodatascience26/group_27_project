@@ -3,3 +3,165 @@ title: "05_analysis_1"
 format: html
 ---
 
+---
+title: "05 - Analysis 1: Alpha diversity"
+format: html
+---
+
+## Aim
+
+Recreate Figure 1 of the study: alpha diversity of the nasopharyngeal
+microbiota in SARS-CoV-2 negative samples and in each variant group, measured
+with four indices (Chao1, Observed, Shannon and Simpson). The four plots are
+combined into one 2 x 2 figure with patchwork.
+
+## Load libraries
+
+```{r}
+#| message: false
+library("tidyverse")
+library("patchwork")
+source("99_proj_func.R")
+```
+
+## Load data
+
+```{r}
+dat_aug <- read_tsv(file = "../data/03_dat_aug.tsv") |>
+  set_factor_levels()
+```
+
+The diversity indices were computed per sample in `03_augment`, so we keep one
+row per sample.
+
+```{r}
+alpha_div <- dat_aug |>
+  distinct(sample_id, variant, chao1, observed, shannon, simpson)
+
+alpha_div
+```
+
+## Chao1
+
+```{r}
+plot_chao1 <- alpha_div |>
+  ggplot(mapping = aes(x = variant,
+                       y = chao1,
+                       fill = variant)) +
+  geom_boxplot(alpha = 0.6,
+               outlier.shape = NA) +
+  geom_jitter(width = 0.2,
+              size = 0.8,
+              alpha = 0.4) +
+  scale_fill_manual(values = variant_colours) +
+  labs(title = "A. Chao1",
+       x = NULL,
+       y = "Estimated richness") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_chao1
+```
+
+## Observed
+
+```{r}
+plot_observed <- alpha_div |>
+  ggplot(mapping = aes(x = variant,
+                       y = observed,
+                       fill = variant)) +
+  geom_boxplot(alpha = 0.6,
+               outlier.shape = NA) +
+  geom_jitter(width = 0.2,
+              size = 0.8,
+              alpha = 0.4) +
+  scale_fill_manual(values = variant_colours) +
+  labs(title = "B. Observed",
+       x = NULL,
+       y = "Number of ASVs") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_observed
+```
+
+## Shannon
+
+```{r}
+plot_shannon <- alpha_div |>
+  ggplot(mapping = aes(x = variant,
+                       y = shannon,
+                       fill = variant)) +
+  geom_boxplot(alpha = 0.6,
+               outlier.shape = NA) +
+  geom_jitter(width = 0.2,
+              size = 0.8,
+              alpha = 0.4) +
+  scale_fill_manual(values = variant_colours) +
+  labs(title = "C. Shannon",
+       x = NULL,
+       y = "Shannon index (H')") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_shannon
+```
+
+## Simpson
+
+```{r}
+plot_simpson <- alpha_div |>
+  ggplot(mapping = aes(x = variant,
+                       y = simpson,
+                       fill = variant)) +
+  geom_boxplot(alpha = 0.6,
+               outlier.shape = NA) +
+  geom_jitter(width = 0.2,
+              size = 0.8,
+              alpha = 0.4) +
+  scale_fill_manual(values = variant_colours) +
+  labs(title = "D. Simpson",
+       x = NULL,
+       y = "Simpson index (1 - D)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_simpson
+```
+
+## Combine the four plots
+
+With patchwork, `|` places plots side by side and `/` stacks them, so
+`(A | B) / (C | D)` gives a 2 x 2 square.
+
+```{r}
+#| fig-width: 9
+#| fig-height: 8
+key_plot_alpha <- (plot_chao1 | plot_observed) /
+  (plot_shannon | plot_simpson) +
+  plot_annotation(
+    title = "Alpha diversity of the nasopharyngeal microbiota",
+    subtitle = "Richness (top) is similar across groups; Shannon and Simpson (bottom) are higher in SARS-CoV-2 positive samples"
+  )
+
+key_plot_alpha
+
+ggsave(filename = "../results/05_key_plot_1.png",
+       plot = key_plot_alpha,
+       width = 9,
+       height = 8,
+       dpi = 300)
+```
+
+## Medians per group
+
+
+```{r}
+alpha_div |>
+  group_by(variant) |>
+  summarise(n = n(),
+            chao1 = median(chao1),
+            observed = median(observed),
+            shannon = median(shannon),
+            simpson = median(simpson))
+```
