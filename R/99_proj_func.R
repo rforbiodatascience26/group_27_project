@@ -1,6 +1,27 @@
 # 99_proj_func.R -------------------------------------------------------------
 # Project functions. Loaded in each .qmd with source("99_proj_func.R").
 
+# Plot settings ---------------------------------------------------------------
+# One colour per group, used in every plot so the groups always look the same.
+variant_colours <- c(Negative = "#7f7f7f",
+                     Gamma = "#1b9e77",
+                     Lambda = "#d95f02",
+                     Delta = "#7570b3")
+
+# Restore factor levels -------------------------------------------------------
+# TSV files do not store factor levels, so they are set again after reading
+# 03_dat_aug.tsv.
+set_factor_levels <- function(dat) {
+  dat |>
+    mutate(result = factor(result, levels = c("Negative", "Positive")),
+           variant = factor(variant,
+                            levels = c("Negative", "Gamma", "Lambda", "Delta")),
+           month = factor(month, levels = month.abb) |>
+             fct_drop(),
+           age_group = factor(age_group,
+                              levels = c("0-18", "19-40", "41-65", "66+")),
+           sex = factor(sex))
+}
 
 # Alpha diversity -------------------------------------------------------------
 # All functions take a numeric vector of read counts for ONE sample (one value
