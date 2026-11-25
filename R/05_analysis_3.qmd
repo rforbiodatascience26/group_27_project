@@ -1,0 +1,105 @@
+---
+title: "05_analysis_3"
+format: html
+---
+
+## Load libraries
+
+```{r}
+library(scales)
+library(ggplot2)
+```
+
+## Variant-dependent Cytokine Expression
+
+### TNF-α Relative Expression
+
+```{r}
+dat_unique <- dat_aug %>% 
+  distinct(sample_id, variant, log10_tnf_a) 
+
+ggplot(data = dat_unique,
+       aes(x = variant,
+           y = log10_tnf_a,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent TNF-α Expression",
+     subtitle = "Relative expression by SARS-CoV-2 variant (log10 scale)",
+     y = "TNF-α (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
+
+## IL-2 Relative Expression
+
+```{r}
+dat_unique <- dat_aug %>% 
+  distinct(sample_id, variant, log10_il2) 
+
+ggplot(data = dat_unique,
+       aes(x = variant,
+           y = log10_il2,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent IL-2 Expression",
+     subtitle = "Relative expression by SARS-CoV-2 variant (log10 scale)",
+     y = "IL-2 (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
+
+## IL-1Ra Relative Expression
+
+```{r}
+dat_unique <- dat_aug %>% 
+  distinct(sample_id, variant, log10_il1ra) 
+
+ggplot(data = dat_unique,
+       aes(x = variant,
+           y = log10_il1ra,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent IL-1Ra Expression",
+     subtitle = "Relative expression by SARS-CoV-2 variant (log10 scale)",
+     y = "IL-1Ra (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
+
+## IFN-γ Relative Expression
+
+```{r}
+dat_unique <- dat_aug %>% 
+  distinct(sample_id, variant, log10_ifn_g) 
+
+ggplot(data = dat_unique,
+       aes(x = variant,
+           y = log10_ifn_g,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent IFN-γ Expression",
+     subtitle = "Relative expression by SARS-CoV-2 variant (log10 scale)",
+     y = "IFN-γ (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+```
