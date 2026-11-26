@@ -42,3 +42,321 @@ meta_aug |>
 ```{r}
 qc_reads
 ```
+
+## Plots to make the description section easier to visualize
+
+## Load libraries
+
+```{r}
+#| message: false
+library("tidyverse")
+source("99_proj_func.R")
+```
+
+## Load data
+
+```{r}
+dat_aug <- read_tsv(file = "../data/03_dat_aug.tsv") |>
+  set_factor_levels()
+```
+
+`03_dat_aug.tsv` has one row per sample and ASV. Sample-level variables
+(metadata, cytokines, read QC and diversity) are repeated in every row of a
+sample, so for describing the samples we keep one row per sample.
+
+```{r}
+dat_samples <- dat_aug |>
+  select(-c(asv_id, reads, rel_abund, kingdom:species)) |>
+  distinct()
+
+dat_samples |>
+  count(sample_id) |>
+  filter(n > 1) |>
+  nrow()
+```
+
+# 1. The cohort
+
+## 1.1 Samples per group
+
+```{r}
+dat_samples |>
+  count(result, variant) |>
+  mutate(pct = round(100 * n / sum(n), 1))
+```
+
+## 1.2 Age and sex per group
+
+```{r}
+cohort_table <- dat_samples |>
+  group_by(variant) |>
+  summarise(n = n(),
+            age_median = median(age),
+            age_q1 = quantile(age, probs = 0.25),
+            age_q3 = quantile(age, probs = 0.75),
+            pct_female = round(100 * mean(sex == "Female"), 1))
+
+cohort_table
+```
+
+```{r}
+dat_samples |>
+  ggplot(mapping = aes(x = variant,
+                       y = age,
+                       fill = variant)) +
+  geom_boxplot(alpha = 0.6,
+               outlier.shape = NA) +
+  geom_jitter(width = 0.2,
+              size = 1,
+              alpha = 0.5) +
+  scale_fill_manual(values = variant_colours) +
+  labs(title = "Age distribution per group",
+       x = NULL,
+       y = "Age (years)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+dat_samples |>
+  ggplot(mapping = aes(x = variant,
+                       fill = age_group)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ sex) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  scale_fill_brewer(palette = "Blues") +
+  labs(title = "Age group and sex composition per group",
+       x = NULL,
+       y = "Share of samples",
+       fill = "Age group") +
+  theme_minimal()
+```
+
+## 1.3 Where the samples come from
+
+```{r}
+dat_samples |>
+  count(city, sort = TRUE)
+```
+
+# 2. When the samples were collected
+
+The variants circulated at different times, so sampling date may be
+confounded with variant. This plot shows how the groups are distributed over
+the sampling period.
+
+```{r}
+dat_samples |>
+  count(month, variant) |>
+  pivot_wider(names_from = variant,
+              values_from = n,
+              values_fill = 0)
+```
+
+```{r}
+key_plot_calendar <- dat_samples |>
+  ggplot(mapping = aes(x = month,
+                       fill = variant)) +
+  geom_bar(position = position_dodge(preserve = "single"),
+           colour = "white") +
+  scale_fill_manual(values = variant_colours) +
+  labs(title = "Samples collected per month and group (2021)",
+       subtitle = "No SARS-CoV-2 negative samples were collected in April or May",
+       x = "Month of collection",
+       y = "Number of samples",
+       fill = "Group") +
+  theme_minimal()
+
+key_plot_calendar
+
+ggsave(filename = "../results/04_key_plot_1.png",
+       plot = key_plot_calendar,
+       width = 8,
+       height = 5,
+       dpi = 300)
+```
+
+# 3. Sequencing quality
+
+## 3.1 Sequencing depth
+
+```{r}
+dat_samples |>
+  select(variant, total_reads, bacterial_reads) |>
+  pivot_longer(cols = c(total_reads, bacterial_reads),
+               names_to = "read_type",
+               values_to = "reads") |>
+  group_by(read_type) |>
+  summarise(min = min(reads),
+            median = median(reads),
+            max = max(reads))
+```
+
+## 3.2 Non-bacterial reads
+
+Eukaryotic (host), unassigned, chloroplast and mitochondrial reads were removed
+in `03_augment`. Their share differs a lot between samples.
+
+```{r}
+dat_samples |>
+  group_by(variant) |>
+  summarise(median_pct_non_bacterial = median(pct_non_bacterial),
+            max_pct_non_bacterial = max(pct_non_bacterial))
+```
+
+```{r}
+key_plot_qc <- dat_samples |>
+  ggplot(mapping = aes(x = variant,
+                       y = pct_non_bacterial,
+                       fill = variant)) +
+  geom_boxplot(alpha = 0.6,
+               outlier.shape = NA) +
+  geom_jitter(width = 0.2,
+              size = 1,
+              alpha = 0.5) +
+  scale_fill_manual(values = variant_colours) +
+  labs(title = "Share of non-bacterial reads removed per sample",
+       subtitle = "Mostly eukaryotic (host) DNA",
+       x = NULL,
+       y = "Non-bacterial reads (%)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+key_plot_qc
+
+ggsave(filename = "../results/04_key_plot_2.png",
+       plot = key_plot_qc,
+       width = 7,
+       height = 5,
+       dpi = 300)
+```
+
+# 4. Cytokines
+
+## 4.1 Missing values and flagged samples
+
+```{r}
+dat_samples |>
+  summarise(across(.cols = c(il2, ifn_g, tnf_a, il1ra),
+                   .fns = ~ sum(is.na(.x))))
+
+dat_samples |>
+  count(variant, qc_cytokine_duplicated) |>
+  pivot_wider(names_from = qc_cytokine_duplicated,
+              values_from = n,
+              values_fill = 0,
+              names_prefix = "duplicated_")
+```
+
+## 4.2 Why a log scale
+
+Cytokine values span many orders of magnitude, so on a linear scale almost all
+samples pile up near zero. On a log10 scale the distributions become
+interpretable.
+
+```{r}
+cytokines_long <- dat_samples |>
+  select(sample_id, variant, il2, ifn_g, tnf_a, il1ra) |>
+  pivot_longer(cols = c(il2, ifn_g, tnf_a, il1ra),
+               names_to = "cytokine",
+               values_to = "expression") |>
+  drop_na(expression) |>
+  mutate(cytokine = case_match(cytokine,
+                               "il2" ~ "IL-2",
+                               "ifn_g" ~ "IFN-gamma",
+                               "tnf_a" ~ "TNF-alpha",
+                               "il1ra" ~ "IL-1ra"))
+
+cytokines_long |>
+  group_by(cytokine) |>
+  summarise(min = min(expression),
+            median = median(expression),
+            max = max(expression),
+            orders_of_magnitude = log10(max / min))
+```
+
+```{r}
+cytokines_long |>
+  ggplot(mapping = aes(x = expression)) +
+  geom_histogram(bins = 40,
+                 fill = "steelblue") +
+  facet_wrap(~ cytokine,
+             scales = "free") +
+  labs(title = "Cytokine expression on a linear scale",
+       x = "Relative expression",
+       y = "Number of samples") +
+  theme_minimal()
+```
+
+```{r}
+key_plot_cytokines <- cytokines_long |>
+  ggplot(mapping = aes(x = expression)) +
+  geom_histogram(bins = 40,
+                 fill = "steelblue") +
+  facet_wrap(~ cytokine) +
+  scale_x_log10(labels = scales::label_log()) +
+  labs(title = "Cytokine expression on a log10 scale",
+       x = "Relative expression (log10 scale)",
+       y = "Number of samples") +
+  theme_minimal()
+
+key_plot_cytokines
+
+ggsave(filename = "../results/04_key_plot_3.png",
+       plot = key_plot_cytokines,
+       width = 8,
+       height = 5,
+       dpi = 300)
+```
+
+# 5. The bacterial community
+
+## 5.1 Taxonomic overview
+
+```{r}
+dat_aug |>
+  filter(reads > 0) |>
+  summarise(n_asv = n_distinct(asv_id),
+            n_genus = n_distinct(genus),
+            n_family = n_distinct(family),
+            n_phylum = n_distinct(phylum))
+```
+
+## 5.2 Most abundant phyla and genera
+
+Mean relative abundance across all samples (each sample weighs the same).
+
+```{r}
+dat_aug |>
+  group_by(sample_id, phylum) |>
+  summarise(rel_abund = sum(rel_abund),
+            .groups = "drop") |>
+  group_by(phylum) |>
+  summarise(mean_pct = 100 * mean(rel_abund)) |>
+  arrange(desc(mean_pct))
+```
+
+```{r}
+top_genera <- dat_aug |>
+  group_by(sample_id, genus) |>
+  summarise(rel_abund = sum(rel_abund),
+            .groups = "drop") |>
+  group_by(genus) |>
+  summarise(mean_pct = 100 * mean(rel_abund),
+            prevalence_pct = 100 * mean(rel_abund > 0)) |>
+  slice_max(order_by = mean_pct,
+            n = 15)
+
+top_genera
+```
+
+```{r}
+top_genera |>
+  ggplot(mapping = aes(x = mean_pct,
+                       y = fct_reorder(genus, mean_pct))) +
+  geom_col(fill = "steelblue") +
+  labs(title = "15 most abundant bacterial genera (all samples)",
+       x = "Mean relative abundance (%)",
+       y = NULL) +
+  theme_minimal()
+```
