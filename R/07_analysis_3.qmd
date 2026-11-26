@@ -1,0 +1,129 @@
+---
+title: "05_analysis_3"
+format: html
+---
+
+## Load libraries
+
+```{r}
+#| message: false
+library(tidyverse)
+library(scales)
+library(ggplot2)
+library(patchwork)
+```
+
+## Data loading and inspection
+
+Plotting the data triggered a warning saying that the data contained an invalid or missing value. To find out what exactly caused the warning a summary of the data was made. From the summary it was identified that log12_il2 and log10_il1ra had NAs. Consequently, the affected rows were removed/filtered inside the specific plot that uses log10_il2 or log10_il1ra.
+
+```{r}
+summary(dat_unique)
+```
+
+```{r}
+dat_unique <- dat_aug |> 
+  distinct(sample_id, variant, log10_tnf_a, log10_il2, log10_il1ra, log10_ifn_g) 
+```
+
+## Variant-dependent Cytokine Expression
+
+### TNF-α Relative Expression
+
+```{r}
+plot_tnf_a <- dat_unique |> ggplot(
+       aes(x = variant,
+           y = log10_tnf_a,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent TNF-α Expression",
+     y = "TNF-α (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_tnf_a
+```
+
+## IL-2 Relative Expression
+
+```{r}
+plot_il_2 <- dat_unique |> 
+  filter(!is.na(log10_il2)) |>
+  ggplot(aes(x = variant,
+           y = log10_il2,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent IL-2 Expression",
+     y = "IL-2 (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_il_2
+```
+
+## IL-1Ra Relative Expression
+
+```{r}
+plot_il_1ra <- dat_unique |> 
+  filter(!is.na(log10_il1ra)) |>
+  ggplot(
+       aes(x = variant,
+           y = log10_il1ra,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent IL-1Ra Expression",
+     y = "IL-1Ra (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_il_1ra
+```
+
+## IFN-γ Relative Expression
+
+```{r}
+plot_ifn_g <- dat_unique |> ggplot(
+       aes(x = variant,
+           y = log10_ifn_g,
+           fill = variant)) +
+  geom_boxplot(alpha = 0.85, outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Variant-Dependent IFN-γ Expression",
+     y = "IFN-γ (Relative Expression)",
+     x = "Variant") +
+  scale_y_continuous(labels = label_math(10^.x)) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+plot_ifn_g
+```
+
+## Combined cytokine expression plot
+
+```{r}
+#| fig-width: 9
+#| fig-height: 8
+key_plot_cytokine <- (plot_tnf_a | plot_il_2) /
+  (plot_il_1ra | plot_ifn_g) +
+  plot_annotation(
+    title = "Cytokine Expression of SARS-CoV-2 Variants",
+    subtitle = "Relative expression by SARS-CoV-2 variant (log10 scale)"
+  )
+
+
+
+key_plot_cytokine
+```
